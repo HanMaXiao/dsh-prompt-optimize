@@ -1,11 +1,12 @@
-# The whole package has exactly one verification command (`node --test`),
-# because there is no build, no bundler and no typecheck: the Loader reads
-# these files as written. CI therefore installs the recorded dependencies and
-# runs that command, and nothing else.
+# The package has exactly one verification command (`node --test`), because
+# there is no build, no bundler and no typecheck: the Loader reads these files
+# as written. CI therefore installs the recorded dependencies and runs that
+# command, and that is the only job branch protection requires.
 #
 # The JOB NAME is the status-check context GitHub reports: a job named
 # `node --test` reports as exactly `node --test`, and branch protection must
-# require that same string.
+# require that same string. The second job is deliberately named differently
+# and marked informational, so adding it cannot disturb that context.
 name: ci
 
 on:
@@ -46,3 +47,45 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: node --test
+
+  # Informational only: preset drift says the copied preset row no longer
+  # matches the shipped one, which is a maintenance signal, not a broken build.
+  # It must never gate `main`, so it carries continue-on-error and its own name
+  # rather than reusing the required `node --test` context.
+  preset-drift:
+    name: preset drift (informational)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 10
+    steps:
+      # The plugin repo and the DSH harness repo are separate checkouts, so the
+      # harness source is fetched into a sibling directory. It is public
+      # (deepseek-ai/deepseek-harness), so the clone normally succeeds; if it
+      # does not, no root is exported and the script SKIPs instead of failing.
+      - uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Fetch the DSH source tree (public repo, sparse)
+        id: dsh
+        continue-on-error: true
+        run: |
+          set -u
+          root="$GITHUB_WORKSPACE/dsh"
+          if git clone --depth 1 --filter=blob:none --sparse \
+              https://github.com/deepseek-ai/deepseek-harness.git "$root" \
+              && git -C "$root" sparse-checkout set packages/bundle/web-app/presets \
+              && test -f "$root/packages/bundle/web-app/presets/standard.patch.yml"; then
+            echo "root=$root" >> "$GITHUB_OUTPUT"
+            echo "DSH source tree ready at $root"
+          else
+            echo "::warning::could not fetch the DSH source tree; the preset drift check will SKIP"
+          fi
+
+      # An empty DSH_SOURCE_ROOT is the configured absence: the script prints
+      # the SKIP notice with the hint and exits 0.
+      - name: Check preset drift
+        working-directory: plugin
+        env:
+          DSH_SOURCE_ROOT: ${{ steps.dsh.outputs.root }}
+        run: node scripts/check-preset-drift.mjs

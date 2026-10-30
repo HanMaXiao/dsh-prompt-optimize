@@ -124,7 +124,14 @@ node --test
 ## 七、维护须知
 
 1. **改 Host 侧 JS 需要重启**（Client 侧刷新页面即可）。原因与七种无效绕法的逐条实测见 `../dsh-prompt-mode/README.md` 的「维护须知」——同一个 Loader，同一套结论。
-2. **预设会随 DSH 版本漂移**：`preset-prompt-tune` 的 `plugins` 列表是从 shipped `standard` 预设逐行复制的（本插件的这份是从已核对过零漂移的兄弟插件里程序化生成，生成后再次比对确认零漂移）。DSH 升级后重跑同款比对即可。
+2. **预设会随 DSH 版本漂移**：`preset-prompt-tune` 的 `plugins` 列表是从 shipped `standard` 预设逐行复制的（本插件的这份是从已核对过零漂移的兄弟插件里程序化生成，生成后再次比对确认零漂移）。DSH 升级后重跑同款比对即可：
+
+   ```powershell
+   cd D:\XiaoProject\DSHPluginDev\dsh-prompt-optimize
+   node scripts\check-preset-drift.mjs --dsh-root D:\XiaoProject\deepseek-harness
+   ```
+
+   `scripts/check-preset-drift.mjs` 不引入任何 YAML 库（本包不允许新增依赖，它按行解析这两个文件的固定形状），只比对 `preset-prompt-tune` 行的 `plugins` 列表与 shipped `standard` 预设的同名块；本包自己追加的 `prompt-mode-policy` 行按预期排除。根目录也可用 `DSH_SOURCE_ROOT` 环境变量给；两者都没有时打印 SKIP 提示并以 0 退出（裸 checkout 没有比对对象，不算失败）。零漂移退出 0；有漂移则打印 diff 并以 1 退出——此时按 diff 把 `plugins` 列表刷成 shipped 的形态，再重新追加本包自己的策略行。CI 里同款检查作为信息性作业运行（`continue-on-error: true`，作业名不叫 `node --test`），漂移只报警、不拦 `main`。
 3. **渲染函数必须防御**：`output.render` 跑在 UI 路径上，抛错会打坏工具卡片。本插件的三个渲染器对任意 `value` 都不抛（离线自测第 4 节覆盖）。
 4. **模型调用失败要说清**：`finish.kind` 为 `error` / `aborted` / `max-tokens` / `tool-calls` 时分别给出不同的可行动报错，绝不静默返回空文本。
 
