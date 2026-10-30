@@ -1,0 +1,48 @@
+# The whole package has exactly one verification command (`node --test`),
+# because there is no build, no bundler and no typecheck: the Loader reads
+# these files as written. CI therefore installs the recorded dependencies and
+# runs that command, and nothing else.
+#
+# The JOB NAME is the status-check context GitHub reports: a job named
+# `node --test` reports as exactly `node --test`, and branch protection must
+# require that same string.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: node --test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          # The version the committed lockfile was written and verified against.
+          version: 11
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      # `--frozen-lockfile` is the point: the lockfile is committed, so a
+      # dependency that resolves differently from what is recorded fails here
+      # instead of on a user's machine. The bundle carries its own node_modules
+      # at runtime (see README), so this installs what the package declares.
+      - run: pnpm install --frozen-lockfile
+
+      - run: node --test
