@@ -95,8 +95,8 @@ plugin_manager { action: "install_bundle", target: "D:\\XiaoProject\\DSHPluginDe
 离线自测（79 项：真实 `dsh-tools` 注册表前置校验、React 19 真渲染、真实 typert 协议与 loader 校验、无模型的模型调用路径、客户端三条路径）：
 
 ```powershell
-cd D:\XiaoProject\DSHPluginDev
-node check-optimize.mjs
+cd D:\XiaoProject\DSHPluginDev\dsh-prompt-optimize
+node --test
 ```
 
 ### 已实测（`web` profile，安装即生效）
