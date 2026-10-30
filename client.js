@@ -179,19 +179,24 @@ window.__ModuleLoader__.load({
     /**
      * The seven blocks, with the words that betray them.
      *
-     * A deliberately small mirror of `lib/tune.js`: the client cannot import a
-     * sibling module from the browser table, and the button only needs coverage
-     * counting and a structural fill — the scoring, diagnosis and the model
-     * pass live on the Host.
+     * A mirror of `lib/tune.js`'s patterns, kept in lockstep with them: the
+     * client cannot import a sibling module from the browser table, and the
+     * button only needs coverage counting and a structural fill — the scoring,
+     * diagnosis and the model pass live on the Host. The lockstep is the point:
+     * a looser copy here would let the coverage line report a block the Host's
+     * guide refuses (it did — a bare 项目 counted as a data source here long
+     * after the Host stopped accepting it). Change one, change both, in the
+     * same commit; `tests/tune.test.js` pins the Host side and the panel
+     * harness drives this one.
      */
     const BLOCKS = [
-      { title: '角色', match: /你是|作为|扮演|我是一名|负责|act as|you are/i },
-      { title: '目标', match: /目标|想要|目的是|实现|完成|拿到|产出|goal|objective/i },
-      { title: '上下文与数据源', match: /背景|上下文|现状|技术栈|项目|代码库|仓库|文件|目录|路径|context|repo/i },
-      { title: '交付物', match: /交付|输出到|产出|生成到|写到|保存到|新建|deliverable|output/i },
-      { title: '硬性约束', match: /不要|不准|禁止|必须|只能|不得|限制|约束|避免|别|must|never|do not|avoid|only/i },
-      { title: '验收标准', match: /验收|通过|测试|跑通|自测|标准|判据|acceptance|criteria|test passes|verified/i },
-      { title: '输出格式', match: /格式|表格|列表|markdown|json|字数|不超过|分点|format|bullet/i },
+      { title: '角色', match: /你是|(?:我是|作为)[^，。；\n]{0,6}(?:工程师|开发者|专家|顾问|架构师|助手|助理|审查者|执行者|负责人)|扮演|[我你]负责|act as|(?:i(?:'m| am)|you are|as) an? (?:[a-z]+ )*(?:engineer|developer|architect|reviewer|expert|assistant|analyst|auditor|consultant|lead)/i },
+      { title: '目标', match: /目标|想要|我想|希望|目的是|完成|拿到|达成|goal|objective|\bwants?\b/i },
+      { title: '上下文与数据源', match: /背景|上下文|现状|技术栈|代码库|仓库|源码|先读|读一下|读懂|查阅|context|repo|codebase|data source|\bread\b|[A-Za-z]:\\[\w.-]+(?:\\[\w.-]+)*|\.{1,2}\/[\w.-]+(?:\/[\w.-]+)*|[\w.-]+\/[\w.-]+\.[A-Za-z0-9]{1,10}/i },
+      { title: '交付物', match: /交付|输出到|产出|生成到|写到|写成|写入|保存到|新建|deliverable|write to|save to|outputs? to|output\s*[:：]/i },
+      { title: '硬性约束', match: /不要|不准|禁止|必须|只能|不得|限制|约束|避免|别[动改删加碰跑用]|must not|do not|don't|never|avoid|only (?:change|edit|modify|touch|run|use|add|remove|write|read|keep|support|ask)/i },
+      { title: '验收标准', match: /验收|自测|跑通|全绿|变绿|判据|单元测试|单测|(?:跑|执行|运行|写|补|加).{0,4}测试|测试(?:通过|用例|覆盖)|通过(?:测试|检查|验收|构建|验证|评审|审核)|(?:测试|检查|验收|构建|验证|评审|审核|用例|CI|lint)[\s全部都必须]{0,4}通过|acceptance|criteria|pass(?:es|ed)?\b|verified|(?:npm|pnpm|yarn|node|bun|make)\s+(?:run\s+)?test\b/i },
+      { title: '输出格式', match: /(?:输出|回复|回答)格式|格式\s*[:：]|分点|用表格|表格(?:形式|回答|呈现|输出)|列表(?:形式|回答)|(?:markdown|json) 格式|以 (?:markdown|json)|字数|不超过|format\s*[:：]|bullet|as a (?:table|list)|in (?:markdown|json)/i },
     ]
 
     /** Which blocks the draft already carries. */
