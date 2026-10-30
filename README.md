@@ -92,7 +92,7 @@ dsh-prompt-optimize/
 plugin_manager { action: "install_bundle", target: "D:\\XiaoProject\\DSHPluginDev\\dsh-prompt-optimize" }
 ```
 
-离线自测（79 项：真实 `dsh-tools` 注册表前置校验、React 19 真渲染、真实 typert 协议与 loader 校验、无模型的模型调用路径、客户端三条路径）：
+离线自测（149 项：真实 `dsh-tools` 注册表前置校验、React 19 真渲染、真实 typert 协议与 loader 校验、无模型的模型调用路径、客户端三条路径）：
 
 ```powershell
 cd D:\XiaoProject\DSHPluginDev\dsh-prompt-optimize
@@ -111,15 +111,13 @@ node --test
 | 会话工具表 | 三个 `prompt_tune*` 工具出现，可直接调用 |
 | `prompt_tune_guide` | `0/7` 块 + 七条补法 + 带 `⟨待确认⟩` 的确定性改写 |
 | `prompt_tune` | 真模型调用，路由 `deepseek-official/deepseek-flash`，`finish: stop`，改写含角色/可判定目标/硬约束/验收标准 |
-| ✨ 按钮（离线） | `check-optimize.mjs` 第 8 节用假模块表 + 迷你 React 驱动 `client.js`：注册进 `conversation.input.overlay`（id `prompt-tune-button`、order 30、label 为 thunk）；空草稿点了不开；有草稿时开出两个动作；「规范补全」写回七块标准且含 `⟨待确认⟩`；「深度优化」写回 `prompt_tune` 指令；缺 `inputActions` 时渲染诊断而不是抛错 |
+| ✨ 按钮（离线） | `tests/client-button-harness.test.js` + `client-button-ux.test.js` 用假模块表 + 迷你 React 驱动 `client.js`：注册进 `conversation.input.overlay`（id `prompt-tune-button`、order 30、label 为 thunk）；空草稿点了不开；有草稿时开出两个动作；「规范补全」写回七块标准且含 `⟨待确认⟩`；「深度优化」无 Remote 时退回写 `prompt_tune` 指令、有 Remote 时先出 before/after 预览、确认后才落回输入框（取消 / 保留原稿 / 失败都不动草稿）；缺 `inputActions` 时渲染诊断而不是抛错 |
 
 > **这个 bundle 不需要重启就生效**：它的包名从未被进程加载过，按 Loader 的规则（只 import 从未加载过的包名）会被真正 `import()` 一次。这与 `@local/dsh-prompt-mode` 的处境正好相反——那个包名在首装时已被加载，所以它的 Host 侧改动必须等重启。
 
-### 待确认
+### 已确认
 
-- **✨ 按钮在真实页面里出现**：`conversation.input.overlay` 当前的占用者只有三个 shipped 条目（`slash-menu` / `command-popup` / `feedback-dialog`），`prompt-tune-button` 尚未出现；而按钮的逻辑本身已由离线 harness 全面验证（见上表）。两种可能，刷新页面即可区分：
-  1. **客户端模块表是页面启动时拉取的**，新装的 bundle 需要刷新才会加载它的 Client 半边 —— 刷新后按钮出现。
-  2. 刷新后仍不出现 ⇒ 说明 Client 半边加载报错，需要看页面 console 里那一行（插槽条目抛错只会在 console 留一条记录，不会渲染成可见错误）。
+- **✨ 按钮已在真实页面出现**：`conversation.input.overlay` 现有四个占用者——三个 shipped 条目（`slash-menu` / `command-popup` / `feedback-dialog`）加上 `prompt-tune-button`（order 30, active），使用者在输入框右上角看到了 ✨。装后只需**刷新页面**即可加载 Client 半边（客户端模块表在页面启动时拉取）；若刷新后仍不出现，则是 Client 半边加载报错，看页面 console 里那一行（插槽条目抛错只会在 console 留一条记录，不会渲染成可见错误）。判据与对照实验见第八节。
 
 ## 七、维护须知
 
@@ -144,24 +142,24 @@ node --test
 
    取那个 yml 时**不要用 `.dsh-hub-preview\asar.mjs` 的 `cat`**：它的 asar 数据基址少算 4 字节（用 `8 + u32@8`，正确是 `8 + u32@4`），`cat` 出来的内容整体左移 4 字节——首行会多一个 `rue`、末行 `disabled: true` 被截成 `disabled: t`，`plugins` 块跟着少一行，直接拿去比会得到假漂移。上面第 1 步的读法按正确基址取，已与官方 `@electron/asar` 的 `extract` 结果逐字节对齐。另外 `plugins` 表里 `name: cordis:group` 的三行（`planning` / `compaction` / `delegation`）不是包名，是 Cordis 的分组标记，asar 里查不到对应包，核对时按原样保留即可。
    asar 头里 `offset` 是**字符串**（`size` 才是数字），所以第 1 步必须 `Number(e.offset)` / `Number(e.size)`：少了 `Number()` 时 `base + e.offset` 退化成字符串拼接，`subarray` 拿到越界下标后**静默写出一个 0 字节文件**、退出码还是 0——脚本随后报的是 `plugins:` 缺失而不是空文件，很容易绕远路。取完顺手 `Length` 一下就能挡住。
-3. **渲染函数必须防御**：`output.render` 跑在 UI 路径上，抛错会打坏工具卡片。本插件的三个渲染器对任意 `value` 都不抛（离线自测第 4 节覆盖）。
+3. **渲染函数必须防御**：`output.render` 跑在 UI 路径上，抛错会打坏工具卡片。本插件的三个渲染器对任意 `value` 都不抛（`tests/renderers.test.js` 覆盖）。
 4. **模型调用失败要说清**：`finish.kind` 为 `error` / `aborted` / `max-tokens` / `tool-calls` 时分别给出不同的可行动报错，绝不静默返回空文本。
 
 ## 八、已知边界与下一步
 
-### 刷新页面 = Client 半边生效；重启 Host = Host 半边生效（都已实测）
+### 刷新页面 = Client 半边生效；重启 Host = Host 半边生效
 
-- **Client 半边只需刷新页面。** 实测：刷新后 `conversation.input.overlay` 出现第四个占用者 `prompt-tune-button`（order 30, active），使用者也在输入框右上角看到了 ✨——而那一轮的 Host 进程从头到尾没换过（pid 14800，启动于 09-25 20:26:10）。原因是客户端模块表在页面启动时拉取，模块文件由 Host 从磁盘现取。
+- **Client 半边只需刷新页面。** 客户端模块表在页面启动时拉取，模块文件由 Host 从磁盘现取，所以改 `client.js` 后刷一下页面即可——实测刷新后 `conversation.input.overlay` 出现第四个占用者 `prompt-tune-button`（order 30, active），使用者在输入框右上角看到了 ✨，而那一轮的 Host 进程并没有重启过。
 - **Host 半边必须重启进程。** Loader 只在首次 `import()` 某个包名时加载代码，刷新页面不会让它换模块。判据：`<libraryDir>/status.json` 的 `at` 是否变新、有没有 `remote` 字段。
-- 对照实验（排除「组合变更会推送新客户端模块」）：禁用再启用 bundle 会改写 profile manifest 的 `bundles`（boot HMR 明确比较该字段），但 `conversation.input.overlay` 始终只有三个 shipped 条目。
+- 对照实验（排除「组合变更会推送新客户端模块」）：禁用再启用 bundle 会改写 profile manifest 的 `bundles`（boot HMR 明确比较该字段），但这不会重载 Client 半边——按钮仍然要等一次页面刷新才出现。
 
 ### 深度优化：已实现为客户端→宿主 Remote
 
-✨ 按钮的「深度优化」不再把指令写进输入框等用户回车，而是调用一条 Remote 让结果**原地落回输入框**：
+✨ 按钮的「深度优化」不再把指令写进输入框等用户回车，而是调用一条 Remote：调用过程中可取消、显示进度，结果先进入 **before/after 预览**，用户确认后才落回输入框：
 
-- `remote.js` —— `TypertRemoteService` 子类，暴露 `optimizeDraft(draft, intent, signal)`，内部走与 `prompt_tune` **同一份** `lib/tune-call.js`（离线自测第 9 节覆盖它：系统提示词、四个终止分支）。
+- `remote.js` —— `TypertRemoteService` 子类，暴露 `optimizeDraft(draft, intent, signal)`，内部走与 `prompt_tune` **同一份** `lib/tune-call.js`（`tests/tune-call.test.js` 覆盖它：系统提示词、四个终止分支）。
 - `typert.js` —— 手写的 TYPERT manifest，经 `exports["./typert"]` 暴露给 `typert-loader`。
-- 客户端：**自己调 `ctx.remote.$mount()`** 挂上这份 manifest 的镜像（见下面第 5 条），然后读 `ctx.get('remote.promptOptimize').optimizeDraft(...)`，成功后 `inputActions.setDraft(结果)`；**拿不到该命名空间时自动退回**「把 `prompt_tune` 指令写进输入框」的老路径，按钮永远不会因为 Remote 缺失而失灵。
+- 客户端：**自己调 `ctx.remote.$mount()`** 挂上这份 manifest 的镜像（见下面第 5 条），然后读 `ctx.get('remote.promptOptimize').optimizeDraft(...)`；改写成功后在预览里对比 before/after，用户点「替换输入框」才 `inputActions.setDraft(结果)`——取消、保留原稿、失败都不动草稿；**拿不到该命名空间时自动退回**「把 `prompt_tune` 指令写进输入框」的老路径，按钮永远不会因为 Remote 缺失而失灵。
 
 落地过程中量到的五条约束（都已按实测修掉）：
 
@@ -180,16 +178,16 @@ node --test
 | 事实 | 证据 |
 |------|------|
 | manifest 已被 loader 接受 | 修好 codec 后在全新进程里启动，**零 activation warning**（此前是 `typert-loader ... has no create() factory`） |
-| 手装的标记就是协议读回的东西 | 离线第 10 节用**真实协议**的 `remoteMethods()` 读回 `[{method:'optimizeDraft', invocation:{kind:'direct'}}]` |
-| manifest 通过**真实 loader** 校验 | 第 10 节调 `validateTypertManifest`，并配反向对照（去掉 `create` 会被拒），证明这不是走过场 |
-| 网关面向的绑定字段正确 | 第 10 节用真实 `Context` 构造真实 service：`typertRemote = {service, serviceKey:'promptOptimize', namespace:'promptOptimize'}`，且真实类上带标记 |
-| 模型调用路径已离线覆盖 | 第 9 节：系统提示词、草稿逐字框定、路由与信号、四个终止分支 |
-| 按钮三条路径已离线覆盖 | 第 8 节：无 Remote 退回落、有 Remote 原地替换、Remote 失败上报且不动草稿 |
-| 客户端自己挂上了贡献项 | 第 8 节断言 `$mount` 收到 `@local/dsh-prompt-optimize` 与 `optimizeDraft(draft,intent)` 描述符；第 11 节在**真实 Cordis** 里用真实 carrier 激活同一份 |
-| 按钮在**真 React** 下能渲染 | 第 8 节用 React 19 + `react-dom/server` 渲染同一组件：迷你 harness 不校验 React 语义，真渲染抓到过一次「组件绑定的是注入的 React 实现」这类只在页面里才会暴露的问题 |
+| 手装的标记就是协议读回的东西 | `tests/remote-manifest.test.js` 用**真实协议**的 `remoteMethods()` 读回 `[{method:'optimizeDraft', invocation:{kind:'direct'}}]` |
+| manifest 通过**真实 loader** 校验 | `tests/remote-manifest.test.js` 调 `validateTypertManifest`，并配反向对照（去掉 `create` 会被拒），证明这不是走过场 |
+| 网关面向的绑定字段正确 | `tests/remote-manifest.test.js` 用真实 `Context` 构造真实 service：`typertRemote = {service, serviceKey:'promptOptimize', namespace:'promptOptimize'}`，且真实类上带标记 |
+| 模型调用路径已离线覆盖 | `tests/tune-call.test.js`：系统提示词、草稿逐字框定、路由与信号、四个终止分支 |
+| 按钮三条路径已离线覆盖 | `tests/client-button-harness.test.js` + `client-button-ux.test.js`：无 Remote 退回落、有 Remote 先预览后确认替换、Remote 失败上报且不动草稿 |
+| 客户端自己挂上了贡献项 | `tests/client-button-harness.test.js` 断言 `$mount` 收到 `@local/dsh-prompt-optimize` 与 `optimizeDraft(draft,intent)` 描述符；`tests/remote-manifest.test.js` 在**真实 Cordis** 里用真实 carrier 激活同一份 |
+| 按钮在**真 React** 下能渲染 | `tests/client-button-harness.test.js` 用 React 19 + `react-dom/server` 渲染同一组件：迷你 harness 不校验 React 语义，真渲染抓到过一次「组件绑定的是注入的 React 实现」这类只在页面里才会暴露的问题 |
 | 按钮定位有据可依 | owner 自己的 CSS：`.overlayAnchor` 是卡片顶边零高条带、`.card` 是 `position: relative` 且无 `overflow`；真渲染输出确认内联样式为 `position:absolute;top:6px;right:8px` |
 | ✨ 按钮**已在真实页面显示** | `conversation.input.overlay` 第四个占用者 `prompt-tune-button`（order 30, active），使用者目视确认「在输入框右上角」 |
-| Host 侧 Remote **尚未在当前进程生效** | Host 进程 pid 14800 启动于 09-25 20:26:10，早于 `remote.js` 的 23:54；其 `status.json` 也没有 `remote` 字段。Remote 会在 Host 下一次启动时自然生效；在那之前「深度优化」走 agent 工具回退路径（功能可用，只是要多按一次回车） |
+| Host 侧 Remote **重启后生效** | Loader 只在首次加载包名时 `import()`，所以 `remote.js` 的改动要等 Host 下一次启动才生效；重启前「深度优化」走 agent 工具回退路径（功能可用，只是要多按一次回车）。判据：`<libraryDir>/status.json` 出现 `remote` 字段且 `methods` 含 `optimizeDraft:direct` |
 
 唯一没有离线覆盖的，是**网关到页面的那段传输**：它需要一个真实的浏览器页面，所以在重启+刷新之前不做任何声称。
 
@@ -198,7 +196,7 @@ node --test
 1. **重启 Host**：Loader 只在首次加载包名时 `import()`，改动的 Host 代码必须等新进程（见 `../dsh-prompt-mode/README.md` 的维护须知）。
 2. **刷新页面**：客户端模块表在页面启动时拉取。
 
-重启+刷新后，判定三条：`status.json` 里 `remote` 是对象且 `methods` 含 `optimizeDraft:direct`；`conversation.input.overlay` 出现 `prompt-tune-button`；点 ✨ →「深度优化」后输入框被改写且无需回车。
+重启+刷新后，判定三条：`status.json` 里 `remote` 是对象且 `methods` 含 `optimizeDraft:direct`；`conversation.input.overlay` 出现 `prompt-tune-button`；点 ✨ →「深度优化」后弹出 before/after 预览、确认后输入框被改写且无需回车。
 
 ### 仍未做的一步：token 级流式 —— 实测为「需要构建步骤」，故不做
 
