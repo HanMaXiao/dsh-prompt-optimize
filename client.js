@@ -76,7 +76,7 @@ window.__ModuleLoader__.load({
      *
      * The roster is spelled out here rather than imported because the browser
      * module table serves one entry per package and cannot reach `./typert`;
-     * the offline self-test (`check-optimize.mjs`) holds it to the manifest.
+     * the offline suite (tests/client-button-harness.test.js and tests/remote-manifest.test.js) holds it to the manifest.
      */
     const CONTRIBUTION = {
       package: PACKAGE,
