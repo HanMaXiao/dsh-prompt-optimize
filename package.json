@@ -4,7 +4,16 @@
   "private": true,
   "type": "module",
   "description": "Prompt Optimize: rewrite a rough draft into a professional, standard prompt — composer button, tools, system prompt, and a self-iterating skill.",
+  "license": "MIT",
   "icon": "./icon.svg",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HanMaXiao/dsh-prompt-optimize.git"
+  },
+  "bugs": {
+    "url": "https://github.com/HanMaXiao/dsh-prompt-optimize/issues"
+  },
+  "homepage": "https://github.com/HanMaXiao/dsh-prompt-optimize#readme",
   "dependencies": {
     "@deepseek-ai/dsh-typert-protocol": "0.1.7-rc.2"
   },
@@ -13,8 +22,21 @@
     "./mode": "./mode.js",
     "./client": "./client.js",
     "./typert": "./typert.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
   },
+  "files": [
+    "host.js",
+    "mode.js",
+    "client.js",
+    "remote.js",
+    "typert.js",
+    "lib/*.js",
+    "skills/*",
+    "locale/*.json",
+    "icon.svg",
+    "cordis.patch.yml"
+  ],
   "dsh": {
     "bundle": {
       "patch": "./cordis.patch.yml"
