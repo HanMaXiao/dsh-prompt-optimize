@@ -285,8 +285,9 @@ describe('8. Client half: the ✨ button, without a browser', () => {
     check('two mounted buttons keep independent state', buttonsOf(empty.tree).length === 1 && buttonsOf(mounted.tree).length === 1)
   })
 
-  // With a Remote, the deep action rewrites in place instead of writing an
-  // instruction for the user to send. A mounted method answers with a
+  // With a Remote, the deep action no longer writes an instruction for the user
+  // to send: the answer lands in a before/after preview, and only an explicit
+  // confirmation writes it into the composer. A mounted method answers with a
   // `RemoteResult` envelope, never by throwing a business failure.
   it('with a Remote the panel offers the in-place rewrite', async () => {
     remoteRegistration = await applyClient({
@@ -307,20 +308,34 @@ describe('8. Client half: the ✨ button, without a browser', () => {
     check('the Remote scenario still renders exactly two actions', remoteButtons.length === 3, String(remoteButtons.length))
   })
 
-  it('the Remote answer replaces the draft in place', async () => {
+  // Contract change (the accepted preview requirement): a successful Remote
+  // answer used to replace the draft the moment it resolved. It now waits in a
+  // before/after preview — the draft is untouched until the user confirms — so
+  // these three assertions were restated against the preview contract rather
+  // than left pinning the behaviour the feature deliberately replaced. The
+  // preview's own contract (delta, cancel, Ctrl+Z note) is pinned in
+  // tests/client-button-ux.test.js.
+  it('a Remote answer waits in a preview instead of replacing the draft', async () => {
     click(remoteButtons[2])
     await new Promise(resolve => setTimeout(resolve, 0))
-    check('the Remote answer replaces the draft in place',
-      remoteWrites.at(-1) === `已改写：${draft}`, String(remoteWrites.at(-1)).slice(0, 30))
+    const tree = texts(remoteMounted.tree).join('')
+    check('a Remote answer waits in a preview instead of replacing the draft',
+      remoteWrites.length === 0 && tree.includes(draft) && tree.includes(`已改写：${draft}`),
+      `${remoteWrites.length} write(s)`)
   })
 
-  it('the in-place path never falls back to the agent instruction', () => {
-    check('the in-place path never falls back to the agent instruction',
-      !String(remoteWrites.at(-1)).includes('prompt_tune'))
+  it('the preview offers confirm and cancel, not the agent instruction', () => {
+    const tree = texts(remoteMounted.tree).join('')
+    check('the preview offers confirm and cancel, not the agent instruction',
+      buttonsOf(remoteMounted.tree).length === 3 && !tree.includes('prompt_tune'),
+      `${buttonsOf(remoteMounted.tree).length} button(s)`)
   })
 
-  it('the in-place path closes the panel after applying', () => {
-    check('the in-place path closes the panel after applying', buttonsOf(remoteMounted.tree).length === 1)
+  it('confirming the preview replaces the draft and closes the panel', () => {
+    click(buttonsOf(remoteMounted.tree)[1])
+    check('confirming the preview replaces the draft and closes the panel',
+      remoteWrites.at(-1) === `已改写：${draft}` && buttonsOf(remoteMounted.tree).length === 1,
+      String(remoteWrites.at(-1)).slice(0, 30))
   })
 
   // A failing Remote must report, and must not touch the draft. The gateway
